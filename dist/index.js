@@ -64,10 +64,10 @@ const client_cloudformation_1 = __nccwpck_require__(5650);
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            const awsRegion = core.getInput('awsRegion');
             const stackName = core.getInput('stackName');
             const client = new client_cloudformation_1.CloudFormationClient({
-                region: 'us-west-2',
-                customUserAgent: 'github-action'
+                region: awsRegion
             });
             const params = {
                 StackName: stackName
@@ -82,7 +82,6 @@ function run() {
             finally {
                 // finally.
             }
-            core.setOutput('time', new Date().toTimeString());
         }
         catch (error) {
             if (error instanceof Error)

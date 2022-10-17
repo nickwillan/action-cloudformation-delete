@@ -2,6 +2,9 @@ name: 'CloudFormation Delete Action'
 description: 'Deletes CloudFormation Stacks'
 author: 'Nick Willan'
 inputs:
+  awsRegion:
+    required: true
+    description: 'AWS Region'
   stackName:
     required: true
     description: 'CloudFormation Stack Name'

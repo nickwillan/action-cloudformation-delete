@@ -6,11 +6,11 @@ import {
 
 async function run(): Promise<void> {
   try {
+    const awsRegion: string = core.getInput('awsRegion')
     const stackName: string = core.getInput('stackName')
 
     const client: CloudFormationClient = new CloudFormationClient({
-      region: 'us-west-2',
-      customUserAgent: 'github-action'
+      region: awsRegion
     })
     const params = {
       StackName: stackName
@@ -23,7 +23,6 @@ async function run(): Promise<void> {
     } finally {
       // finally.
     }
-    core.setOutput('time', new Date().toTimeString())
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
   }
