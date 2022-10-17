@@ -3,23 +3,17 @@ import {
   CloudFormationClient,
   DeleteStackCommand
 } from '@aws-sdk/client-cloudformation'
-import {wait} from './wait'
 
 async function run(): Promise<void> {
   try {
-    const ms: string = core.getInput('milliseconds')
-    core.debug(`Waiting ${ms} milliseconds ...`) // debug is only output if you set the secret `ACTIONS_STEP_DEBUG` to true
-
-    core.debug(new Date().toTimeString())
-    await wait(parseInt(ms, 10))
-    core.debug(new Date().toTimeString())
+    const stackName: string = core.getInput('stackName')
 
     const client: CloudFormationClient = new CloudFormationClient({
       region: 'us-west-2',
       customUserAgent: 'github-action'
     })
     const params = {
-      StackName: 'ironman-pipeline-dwf'
+      StackName: stackName
     }
     const command = new DeleteStackCommand(params)
     try {

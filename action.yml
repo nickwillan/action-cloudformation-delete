@@ -2,10 +2,9 @@ name: 'CloudFormation Delete Action'
 description: 'Deletes CloudFormation Stacks'
 author: 'Nick Willan'
 inputs:
-  milliseconds: # change this
+  stackName:
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+    description: 'CloudFormation Stack Name'
 runs:
   using: 'node16'
   main: 'dist/index.js'
