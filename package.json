@@ -1,8 +1,8 @@
 {
-  "name": "typescript-action",
-  "version": "0.0.0",
-  "private": true,
-  "description": "TypeScript template action",
+  "name": "action-cloudformation-delete",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Deletes CloudFormation Stacks",
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",
@@ -15,7 +15,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/actions/typescript-action.git"
+    "url": "git+https://github.com/nickwillan/cloudformation-delete-action.git"
   },
   "keywords": [
     "actions",
@@ -25,7 +25,8 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@actions/core": "^1.10.0"
+    "@actions/core": "^1.10.0",
+    "@aws-sdk/client-cloudformation": "^3.188.0"
   },
   "devDependencies": {
     "@types/node": "^16.10.5",

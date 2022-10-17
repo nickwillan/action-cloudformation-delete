@@ -1,4 +1,8 @@
 import * as core from '@actions/core'
+import {
+  CloudFormationClient,
+  DeleteStackCommand
+} from '@aws-sdk/client-cloudformation'
 import {wait} from './wait'
 
 async function run(): Promise<void> {
@@ -10,6 +14,21 @@ async function run(): Promise<void> {
     await wait(parseInt(ms, 10))
     core.debug(new Date().toTimeString())
 
+    const client: CloudFormationClient = new CloudFormationClient({
+      region: 'us-west-2',
+      customUserAgent: 'github-action'
+    })
+    const params = {
+      StackName: 'ironman-pipeline-dwf'
+    }
+    const command = new DeleteStackCommand(params)
+    try {
+      await client.send(command)
+    } catch (error) {
+      // error handling.
+    } finally {
+      // finally.
+    }
     core.setOutput('time', new Date().toTimeString())
   } catch (error) {
     if (error instanceof Error) core.setFailed(error.message)
