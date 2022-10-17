@@ -66,6 +66,7 @@ function run() {
         try {
             const awsRegion = core.getInput('awsRegion');
             const stackName = core.getInput('stackName');
+            core.info(`Deleting Stack ${stackName} in ${awsRegion}...`);
             const client = new client_cloudformation_1.CloudFormationClient({
                 region: awsRegion
             });

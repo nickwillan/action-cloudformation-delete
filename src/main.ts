@@ -9,6 +9,8 @@ async function run(): Promise<void> {
     const awsRegion: string = core.getInput('awsRegion')
     const stackName: string = core.getInput('stackName')
 
+    core.info(`Deleting Stack ${stackName} in ${awsRegion}...`)
+
     const client: CloudFormationClient = new CloudFormationClient({
       region: awsRegion
     })
