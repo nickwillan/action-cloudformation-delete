@@ -5,9 +5,12 @@ inputs:
   awsRegion:
     required: true
     description: 'AWS Region'
-  stackName:
-    required: true
-    description: 'CloudFormation Stack Name'
+  stackNames:
+    required: false
+    description: 'CloudFormation Stack Name(s)  (comma separated)'
+  stackTags:
+    required: false
+    description: 'Cloud Formation Stack tags (comma separated) e.g "key1==value1,key2==value2'
 runs:
   using: 'node16'
   main: 'dist/index.js'

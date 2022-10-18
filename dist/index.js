@@ -58,30 +58,112 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __asyncValues = (this && this.__asyncValues) || function (o) {
+    if (!Symbol.asyncIterator) throw new TypeError("Symbol.asyncIterator is not defined.");
+    var m = o[Symbol.asyncIterator], i;
+    return m ? m.call(o) : (o = typeof __values === "function" ? __values(o) : o[Symbol.iterator](), i = {}, verb("next"), verb("throw"), verb("return"), i[Symbol.asyncIterator] = function () { return this; }, i);
+    function verb(n) { i[n] = o[n] && function (v) { return new Promise(function (resolve, reject) { v = o[n](v), settle(resolve, reject, v.done, v.value); }); }; }
+    function settle(resolve, reject, d, v) { Promise.resolve(v).then(function(v) { resolve({ value: v, done: d }); }, reject); }
+};
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const client_cloudformation_1 = __nccwpck_require__(5650);
+const isEmptyString = (data) => typeof data === 'string' && data.trim().length === 0;
 function run() {
+    var e_1, _a;
+    var _b;
     return __awaiter(this, void 0, void 0, function* () {
         try {
-            const awsRegion = core.getInput('awsRegion');
-            const stackName = core.getInput('stackName');
-            core.info(`Deleting Stack ${stackName} in ${awsRegion}...`);
+            const stackTags = [];
+            const awsRegionInput = core.getInput('awsRegion').trim();
+            const stackNamesInput = core.getInput('stackNames').trim();
+            const stackTagsInput = core.getInput('stackTags').trim();
+            if (isEmptyString(awsRegionInput)) {
+                core.setFailed('awsRegion is required');
+                return;
+            }
+            if (isEmptyString(stackNamesInput) && isEmptyString(stackTagsInput)) {
+                core.setFailed('stackNames or stackTags is required');
+                return;
+            }
             const client = new client_cloudformation_1.CloudFormationClient({
-                region: awsRegion
+                region: awsRegionInput
             });
-            const params = {
-                StackName: stackName
-            };
-            const command = new client_cloudformation_1.DeleteStackCommand(params);
-            try {
-                yield client.send(command);
+            if (!isEmptyString(stackNamesInput)) {
+                for (const stackName of stackNamesInput.split(',')) {
+                    // try to delete any stacks with this name
+                    try {
+                        core.info(`Deleting Stack ${stackName} in ${awsRegionInput}...`);
+                        yield client.send(new client_cloudformation_1.DeleteStackCommand({ StackName: stackName.trim() }));
+                    }
+                    catch (error) {
+                        core.error(`Unable to delete ${stackName}`);
+                    }
+                    finally {
+                        // finally.
+                    }
+                }
             }
-            catch (error) {
-                // error handling.
+            if (!isEmptyString(stackTagsInput)) {
+                try {
+                    for (const tagNameValue of stackTagsInput.split(',')) {
+                        const splitTagArray = tagNameValue.trim().split('==', 2);
+                        stackTags.push({
+                            tagName: splitTagArray[0].trim(),
+                            tagValue: splitTagArray[1].trim()
+                        });
+                    }
+                }
+                catch (err) {
+                    core.error('Error parsing StackTags.');
+                    throw err;
+                }
             }
-            finally {
-                // finally.
+            if (stackTags.length > 0) {
+                const stackNamesFromTags = [];
+                try {
+                    for (var _c = __asyncValues((0, client_cloudformation_1.paginateDescribeStacks)({ client }, {})), _d; _d = yield _c.next(), !_d.done;) {
+                        const page = _d.value;
+                        if (page.Stacks) {
+                            for (const stack of page.Stacks) {
+                                // Find stacks with matching stackTags
+                                let match = true;
+                                for (const stackTag of stackTags) {
+                                    if (!((_b = stack.Tags) === null || _b === void 0 ? void 0 : _b.find(obj => {
+                                        return (obj.Key === stackTag.tagName &&
+                                            obj.Value === stackTag.tagValue);
+                                    }))) {
+                                        match = false;
+                                        break;
+                                    }
+                                }
+                                if (match) {
+                                    stackNamesFromTags.push(stack.StackName);
+                                }
+                            }
+                        }
+                    }
+                }
+                catch (e_1_1) { e_1 = { error: e_1_1 }; }
+                finally {
+                    try {
+                        if (_d && !_d.done && (_a = _c.return)) yield _a.call(_c);
+                    }
+                    finally { if (e_1) throw e_1.error; }
+                }
+                for (const stackName of stackNamesFromTags) {
+                    // try to delete any stacks with this name
+                    try {
+                        core.info(`Deleting Stack ${stackName} in ${awsRegionInput}...`);
+                        yield client.send(new client_cloudformation_1.DeleteStackCommand({ StackName: stackName.trim() }));
+                    }
+                    catch (error) {
+                        core.error(`Unable to delete ${stackName}`);
+                    }
+                    finally {
+                        // finally.
+                    }
+                }
             }
         }
         catch (error) {

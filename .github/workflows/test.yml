@@ -22,4 +22,4 @@ jobs:
       - uses: ./
         with:
           awsRegion: us-east-1
-          stackName: test-stack
+          stackNames: test-stack
