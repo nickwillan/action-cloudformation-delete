@@ -5,12 +5,9 @@ import {
   paginateDescribeStacks
 } from '@aws-sdk/client-cloudformation'
 
-const isEmptyString = (data: string): boolean =>
-  typeof data === 'string' && data.trim().length === 0
-
 interface StackTag {
-  tagName: string
-  tagValue: string
+  key: string
+  value: string
 }
 
 async function run(): Promise<void> {
@@ -21,11 +18,11 @@ async function run(): Promise<void> {
     const stackNamesInput: string = core.getInput('stackNames').trim()
     const stackTagsInput: string = core.getInput('stackTags').trim()
 
-    if (isEmptyString(awsRegionInput)) {
+    if (!awsRegionInput) {
       core.setFailed('awsRegion is required')
       return
     }
-    if (isEmptyString(stackNamesInput) && isEmptyString(stackTagsInput)) {
+    if (!stackNamesInput && !stackTagsInput) {
       core.setFailed('stackNames or stackTags is required')
       return
     }
@@ -34,74 +31,65 @@ async function run(): Promise<void> {
       region: awsRegionInput
     })
 
-    if (!isEmptyString(stackNamesInput)) {
-      for (const stackName of stackNamesInput.split(',')) {
-        // try to delete any stacks with this name
-        try {
-          core.info(`Deleting Stack ${stackName} in ${awsRegionInput}...`)
-          await client.send(
-            new DeleteStackCommand({StackName: stackName.trim()})
-          )
-        } catch (error) {
-          core.error(`Unable to delete ${stackName}`)
-        } finally {
-          // finally.
-        }
-      }
+    if (stackNamesInput) {
+      await Promise.all(
+        stackNamesInput.split(',').map(async stackName => {
+          try {
+            core.info(`Deleting Stack ${stackName} in ${awsRegionInput}...`)
+            await client.send(
+              new DeleteStackCommand({StackName: stackName.trim()})
+            )
+          } catch (error) {
+            core.error(`Unable to delete ${stackName}`)
+          }
+        })
+      )
     }
 
-    if (!isEmptyString(stackTagsInput)) {
+    if (stackTagsInput) {
       try {
-        for (const tagNameValue of stackTagsInput.split(',')) {
-          const splitTagArray = tagNameValue.trim().split('==', 2)
-          stackTags.push({
-            tagName: splitTagArray[0].trim(),
-            tagValue: splitTagArray[1].trim()
+        await Promise.all(
+          stackTagsInput.split(',').map(async tagNameAndValue => {
+            const splitTagArray = tagNameAndValue.trim().split('==', 2)
+            stackTags.push({
+              key: splitTagArray[0].trim(),
+              value: splitTagArray[1].trim()
+            })
           })
-        }
+        )
       } catch (err: unknown) {
-        core.error('Error parsing StackTags.')
-        throw err
+        core.setFailed(`Error parsing stackTags: ${err}`)
+        return
       }
-    }
-    if (stackTags.length > 0) {
-      const stackNamesFromTags: string[] = []
-      for await (const page of paginateDescribeStacks({client}, {})) {
-        if (page.Stacks) {
-          for (const stack of page.Stacks) {
-            // Find stacks with matching stackTags
-            let match = true
-            for (const stackTag of stackTags) {
+
+      if (stackTags.length > 0) {
+        const stackNamesFromTags: string[] = []
+        for await (const page of paginateDescribeStacks({client}, {})) {
+          if (page.Stacks) {
+            for (const stack of page.Stacks) {
               if (
-                !stack.Tags?.find(obj => {
-                  return (
-                    obj.Key === stackTag.tagName &&
-                    obj.Value === stackTag.tagValue
+                stackTags.every(stackTag =>
+                  stack.Tags?.find(
+                    obj =>
+                      obj.Key === stackTag.key && obj.Value === stackTag.value
                   )
-                })
-              ) {
-                match = false
-                break
-              }
-            }
-            if (match) {
-              stackNamesFromTags.push(stack.StackName as string)
+                )
+              )
+                stackNamesFromTags.push(stack.StackName as string)
             }
           }
         }
-      }
-      for (const stackName of stackNamesFromTags) {
-        // try to delete any stacks with this name
-        try {
-          core.info(`Deleting Stack ${stackName} in ${awsRegionInput}...`)
-          await client.send(
-            new DeleteStackCommand({StackName: stackName.trim()})
-          )
-        } catch (error) {
-          core.error(`Unable to delete ${stackName}`)
-        } finally {
-          // finally.
-        }
+
+        await Promise.all(
+          stackNamesFromTags.map(async stackName => {
+            try {
+              core.info(`Deleting Stack ${stackName} in ${awsRegionInput}...`)
+              await client.send(new DeleteStackCommand({StackName: stackName}))
+            } catch (error) {
+              core.error(`Unable to delete ${stackName}`)
+            }
+          })
+        )
       }
     }
   } catch (error) {

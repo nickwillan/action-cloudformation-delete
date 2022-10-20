@@ -68,30 +68,27 @@ var __asyncValues = (this && this.__asyncValues) || function (o) {
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(2186));
 const client_cloudformation_1 = __nccwpck_require__(5650);
-const isEmptyString = (data) => typeof data === 'string' && data.trim().length === 0;
 function run() {
     var e_1, _a;
-    var _b;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             const stackTags = [];
             const awsRegionInput = core.getInput('awsRegion').trim();
             const stackNamesInput = core.getInput('stackNames').trim();
             const stackTagsInput = core.getInput('stackTags').trim();
-            if (isEmptyString(awsRegionInput)) {
+            if (!awsRegionInput) {
                 core.setFailed('awsRegion is required');
                 return;
             }
-            if (isEmptyString(stackNamesInput) && isEmptyString(stackTagsInput)) {
+            if (!stackNamesInput && !stackTagsInput) {
                 core.setFailed('stackNames or stackTags is required');
                 return;
             }
             const client = new client_cloudformation_1.CloudFormationClient({
                 region: awsRegionInput
             });
-            if (!isEmptyString(stackNamesInput)) {
-                for (const stackName of stackNamesInput.split(',')) {
-                    // try to delete any stacks with this name
+            if (stackNamesInput) {
+                yield Promise.all(stackNamesInput.split(',').map((stackName) => __awaiter(this, void 0, void 0, function* () {
                     try {
                         core.info(`Deleting Stack ${stackName} in ${awsRegionInput}...`);
                         yield client.send(new client_cloudformation_1.DeleteStackCommand({ StackName: stackName.trim() }));
@@ -99,70 +96,54 @@ function run() {
                     catch (error) {
                         core.error(`Unable to delete ${stackName}`);
                     }
-                    finally {
-                        // finally.
-                    }
-                }
+                })));
             }
-            if (!isEmptyString(stackTagsInput)) {
+            if (stackTagsInput) {
                 try {
-                    for (const tagNameValue of stackTagsInput.split(',')) {
-                        const splitTagArray = tagNameValue.trim().split('==', 2);
+                    yield Promise.all(stackTagsInput.split(',').map((tagNameAndValue) => __awaiter(this, void 0, void 0, function* () {
+                        const splitTagArray = tagNameAndValue.trim().split('==', 2);
                         stackTags.push({
-                            tagName: splitTagArray[0].trim(),
-                            tagValue: splitTagArray[1].trim()
+                            key: splitTagArray[0].trim(),
+                            value: splitTagArray[1].trim()
                         });
-                    }
+                    })));
                 }
                 catch (err) {
-                    core.error('Error parsing StackTags.');
-                    throw err;
+                    core.setFailed(`Error parsing stackTags: ${err}`);
+                    return;
                 }
-            }
-            if (stackTags.length > 0) {
-                const stackNamesFromTags = [];
-                try {
-                    for (var _c = __asyncValues((0, client_cloudformation_1.paginateDescribeStacks)({ client }, {})), _d; _d = yield _c.next(), !_d.done;) {
-                        const page = _d.value;
-                        if (page.Stacks) {
-                            for (const stack of page.Stacks) {
-                                // Find stacks with matching stackTags
-                                let match = true;
-                                for (const stackTag of stackTags) {
-                                    if (!((_b = stack.Tags) === null || _b === void 0 ? void 0 : _b.find(obj => {
-                                        return (obj.Key === stackTag.tagName &&
-                                            obj.Value === stackTag.tagValue);
-                                    }))) {
-                                        match = false;
-                                        break;
-                                    }
-                                }
-                                if (match) {
-                                    stackNamesFromTags.push(stack.StackName);
+                if (stackTags.length > 0) {
+                    const stackNamesFromTags = [];
+                    try {
+                        for (var _b = __asyncValues((0, client_cloudformation_1.paginateDescribeStacks)({ client }, {})), _c; _c = yield _b.next(), !_c.done;) {
+                            const page = _c.value;
+                            if (page.Stacks) {
+                                for (const stack of page.Stacks) {
+                                    if (stackTags.every(stackTag => {
+                                        var _a;
+                                        return (_a = stack.Tags) === null || _a === void 0 ? void 0 : _a.find(obj => obj.Key === stackTag.key && obj.Value === stackTag.value);
+                                    }))
+                                        stackNamesFromTags.push(stack.StackName);
                                 }
                             }
                         }
                     }
-                }
-                catch (e_1_1) { e_1 = { error: e_1_1 }; }
-                finally {
-                    try {
-                        if (_d && !_d.done && (_a = _c.return)) yield _a.call(_c);
-                    }
-                    finally { if (e_1) throw e_1.error; }
-                }
-                for (const stackName of stackNamesFromTags) {
-                    // try to delete any stacks with this name
-                    try {
-                        core.info(`Deleting Stack ${stackName} in ${awsRegionInput}...`);
-                        yield client.send(new client_cloudformation_1.DeleteStackCommand({ StackName: stackName.trim() }));
-                    }
-                    catch (error) {
-                        core.error(`Unable to delete ${stackName}`);
-                    }
+                    catch (e_1_1) { e_1 = { error: e_1_1 }; }
                     finally {
-                        // finally.
+                        try {
+                            if (_c && !_c.done && (_a = _b.return)) yield _a.call(_b);
+                        }
+                        finally { if (e_1) throw e_1.error; }
                     }
+                    yield Promise.all(stackNamesFromTags.map((stackName) => __awaiter(this, void 0, void 0, function* () {
+                        try {
+                            core.info(`Deleting Stack ${stackName} in ${awsRegionInput}...`);
+                            yield client.send(new client_cloudformation_1.DeleteStackCommand({ StackName: stackName }));
+                        }
+                        catch (error) {
+                            core.error(`Unable to delete ${stackName}`);
+                        }
+                    })));
                 }
             }
         }
